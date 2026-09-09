@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart POS Kasir Web - Fast Scan, Multi-Sisi AI & Kembalian</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body {
+      background-color: #f4f6f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .scanner-box {
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #reader, #modalBarcodeReader {
+      width: 100% !important;
+      border: none !important;
+    }
+    #reader video, #modalBarcodeReader video {
+      border-radius: 12px;
+      object-fit: cover;
+    }
+    .price-tag {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #198754;
+    }
+    .cart-card {
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .nav-pills .nav-link {
+      font-weight: 600;
+      border-radius: 8px;
+    }
+    #videoAiPreview, #modalAiVideo {
+      width: 100%;
+      max-height: 280px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    .visual-guide-box {
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      border: 3px dashed #10b981;
+      border-radius: 18px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .visual-guide-box span {
+      background: rgba(16, 185, 129, 0.95);
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 6px;
+      position: absolute;
+      bottom: -28px;
+      white-space: nowrap;
+    }
+    .prod-thumb {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      background: #f8f9fa;
+    }
+    .photo-preview-box {
+      width: 100%;
+      height: 160px;
+      border: 2px dashed #ced4da;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #fafafa;
+      position: relative;
+      overflow: hidden;
+    }
+    .photo-preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    .mode-btn.active {
+      background-color: #0d6efd !important;
+      color: white !important;
+    }
+    .mode-btn-ai.active {
+      background-color: #0d9488 !important;
+      color: white !important;
+      border-color: #0d9488 !important;
+    }
+    .quick-alert {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 20;
+      animation: fadeInDown 0.25s ease;
+    }
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .side-pill {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      font-weight: 600;
+    }
+    .quick-cash-btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark sticky-top shadow-sm">
+    <div class="container-fluid max-width-lg">
+      <span class="navbar-brand mb-0 h1 fw-bold">
+        <i class="bi bi-cart-check-fill text-success me-2"></i>Smart POS Kasir Web
+      </span>
+      <span class="badge bg-secondary" id="storageStatusBadge">
+        <i class="bi bi-hdd-fill me-1"></i>Penyimpanan Lokal (Aktif)
+      </span>
+    </div>
+  </nav>
+
+  <div class="container py-3">
+    <!-- Nav Tabs -->
+    <ul class="nav nav-pills nav-fill mb-3 bg-white p-2 rounded-3 shadow-sm" id="posTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="kasir-tab" data-bs-toggle="pill" data-bs-target="#tab-kasir" type="button" role="tab">
+          <i class="bi bi-upc-scan me-1"></i>Kasir & Scan
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="produk-tab" data-bs-toggle="pill" data-bs-target="#tab-produk" type="button" role="tab">
+          <i class="bi bi-box-seam me-1"></i>Kelola Produk & Harga
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="pengaturan-tab" data-bs-toggle="pill" data-bs-target="#tab-pengaturan" type="button" role="tab">
+          <i class="bi bi-cloud-arrow-up me-1"></i>Cloud Sync
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="posTabsContent">
+
+      <!-- ==================== TAB 1: KASIR & SCAN CEPAT ==================== -->
+      <div class="tab-pane fade show active" id="tab-kasir" role="tabpanel">
+        <div class="row g-3">
+          
+          <!-- Sisi Kiri: Scanner Kamera Kasir -->
+          <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-3">
+              <div class="card-body p-3">
+                <h6 class="card-title fw-bold mb-2 d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-camera me-1"></i>Pemindai Kasir</span>
+                  <span id="scannerStatusBadge" class="badge bg-secondary">Standby</span>
+                </h6>
+
+                <!-- PILIHAN 2 METODE SCAN -->
+                <div class="mb-3">
+                  <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-primary fw-bold py-2 mode-btn active" id="btnModeBarcode">
+                      <i class="bi bi-upc-scan me-1"></i>Scan Barcode
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary fw-bold py-2 mode-btn-ai" id="btnModeVisualAi">
+                      <i class="bi bi-camera-fill me-1"></i>Scan Foto AI
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Area Tampilan Kamera Kasir -->
+                <div class="scanner-box mb-3" id="scannerContainer">
+                  <div id="scannerPlaceholder" class="text-center text-white p-4">
+                    <i class="bi bi-camera fs-1 opacity-50 d-block mb-2"></i>
+                    <p class="small text-muted mb-0">Kamera kasir belum aktif.<br>Tekan tombol hijau di bawah untuk mulai scan.</p>
+                  </div>
+
+                  <!-- Notifikasi Cepat (Hijau Sukses atau Merah Peringatan) -->
+                  <div id="quickToastAlert" class="alert shadow quick-alert py-2 px-3 fw-bold small text-center" style="display:none;">
+                    <span id="quickToastText"></span>
+                  </div>
+
+                  <!-- Container Barcode -->
+                  <div id="reader" style="display:none;"></div>
+
+                  <!-- Container Visual AI Video -->
+                  <video id="videoAiPreview" autoplay playsinline muted style="display:none;"></video>
+                  
+                  <!-- Kotak Bidik Visual AI -->
+                  <div class="visual-guide-box" id="visualGuideBox" style="display:none;">
+                    <span>Fokus Badan / Logo Produk</span>
+                  </div>
+                </div>
+
+                <!-- Tombol Kontrol Utama Kamera Kasir -->
+                <div class="d-grid gap-2 mb-3">
+                  <button class="btn btn-success fw-bold py-2 shadow-sm" id="btnStartActiveScanner">
+                    <i class="bi bi-play-circle-fill me-1"></i>Nyalakan Kamera Kasir
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" id="btnStopActiveScanner" style="display:none;">
+                    <i class="bi bi-stop-circle me-1"></i>Matikan Kamera Kasir
+                  </button>
+                </div>
+
+                <!-- Petunjuk & Keterangan Aturan Anti-Dobel -->
+                <div class="alert alert-light border py-2 px-3 small text-muted mb-3" id="scannerInstructionAlert">
+                  <div class="d-flex align-items-center mb-1">
+                    <span class="badge bg-success me-2">Scan Pertama: Hijau</span>
+                    <span>Barang masuk ke keranjang (+1)</span>
+                  </div>
+                  <div class="d-flex align-items-center">
+                    <span class="badge bg-danger me-2">Scan Ulang: Merah</span>
+                    <span>Tolak scan dobel (ubah jumlah di tabel)</span>
+                  </div>
+                </div>
+
+                <!-- Sensitivitas AI -->
+                <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border mb-3 small" id="sensitivityRow" style="display:none !important;">
+                  <span class="text-muted fw-semibold">Sensitivitas AI:</span>
+                  <select class="form-select form-select-sm w-auto py-0 px-2 font-monospace" id="aiSensitivitySelect">
+                    <option value="0.67">Tinggi (Mudah Dikenali)</option>
+                    <option value="0.71" selected>Standar (Direkomendasikan)</option>
+                    <option value="0.76">Ketat (Sangat Teliti)</option>
+                  </select>
+                </div>
+
+                <!-- Input Manual / Pencarian Cepat -->
+                <div class="input-group input-group-sm">
+                  <input type="text" id="manualBarcodeInput" class="form-control" placeholder="Ketik barcode / nama barang...">
+                  <button class="btn btn-secondary" id="btnManualAdd">
+                    <i class="bi bi-plus-circle me-1"></i>Tambah
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sisi Kanan: Keranjang Belanja & Kalkulator Uang Kembalian -->
+          <div class="col-lg-7">
+            <div class="card cart-card border-0">
+              <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="mb-0 fw-bold"><i class="bi bi-receipt me-2 text-primary"></i>Keranjang Belanja</h5>
+                  <small class="text-muted">1 pelanggan hanya bisa scan 1x per produk. Ubah jumlah langsung di tabel bawah.</small>
+                </div>
+                <!-- Tombol Reset Pelanggan Baru (Membuka Kunci Scan Kembali) -->
+                <button class="btn btn-outline-danger btn-sm fw-semibold" id="btnClearCart" title="Reset Keranjang & Buka Kunci Scan untuk Pelanggan Baru">
+                  <i class="bi bi-person-plus-fill me-1"></i>Reset Pelanggan Baru
+                </button>
+              </div>
+
+              <!-- Tabel Daftar Barang Belanjaan -->
+              <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width: 55px;">Foto</th>
+                        <th>Item</th>
+                        <th>Harga</th>
+                        <th class="text-center" style="width: 135px;">Jumlah</th>
+                        <th class="text-end">Subtotal</th>
+                        <th style="width: 40px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="cartTableBody">
+                      <!-- Diisi JavaScript -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyCartMessage" class="text-center py-5 text-muted">
+                  <i class="bi bi-cart-x fs-1 opacity-50 d-block mb-2"></i>
+                  <p class="mb-0 fw-bold">Keranjang Belanja Masih Kosong</p>
+                  <small>Arahkan barcode atau kemasan barang ke kamera kasir.</small>
+                </div>
+              </div>
+
+              <!-- Footer Total Kasir & KALKULATOR UANG KEMBALIAN SESUAI PERMINTAAN USER -->
+              <div class="card-footer bg-light p-3 border-0">
+                <div class="row g-2 align-items-center mb-2">
+                  <div class="col-6">
+                    <span class="text-muted small fw-semibold">Total Item Belanja:</span>
+                    <div class="fw-bold fs-6 text-dark" id="totalItemsCount">0 item</div>
+                  </div>
+                  <div class="col-6 text-end">
+                    <span class="text-muted small fw-semibold">TOTAL TAGIHAN:</span>
+                    <div class="price-tag" id="grandTotalPrice">Rp 0</div>
+                  </div>
+                </div>
+
+                <hr class="my-2 text-muted">
+
+                <!-- BAGIAN INPUT UANG DARI PELANGGAN & KEMBALIAN -->
+                <div class="bg-white p-3 rounded-3 border mb-3">
+                  <div class="row g-3 align-items-center">
+                    <div class="col-sm-6">
+                      <label class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-wallet2 text-primary me-1"></i>Uang Tunai dari Pelanggan:
+                      </label>
+                      <div class="input-group">
+                        <span class="input-group-text bg-light fw-bold">Rp</span>
+                        <input type="number" class="form-control form-control-lg fw-bold text-dark" id="cashPaidInput" placeholder="0" min="0">
+                      </div>
+                      <!-- Tombol Cepat Pecahan Uang -->
+                      <div class="d-flex gap-1 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-cash-btn" onclick="setQuickCash('exact')">Uang Pas</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-cash-btn" onclick="setQuickCash(10000)">10.000</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-cash-btn" onclick="setQuickCash(20000)">20.000</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-cash-btn" onclick="setQuickCash(50000)">50.000</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-cash-btn" onclick="setQuickCash(100000)">100.000</button>
+                      </div>
+                    </div>
+
+                    <!-- Kolom Tampilan Kembalian -->
+                    <div class="col-sm-6">
+                      <div class="p-2 rounded-3 text-center border" id="changeCardContainer" style="background-color: #f8fafc;">
+                        <span class="small text-secondary fw-semibold d-block" id="changeLabelDisplay">Uang Kembalian:</span>
+                        <span class="fs-3 fw-bold text-secondary" id="changeAmountDisplay">Rp 0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tombol Selesai / Bayar -->
+                <div class="d-grid gap-2">
+                  <button class="btn btn-success btn-lg fw-bold shadow-sm" id="btnCheckout">
+                    <i class="bi bi-check2-circle me-2"></i>Selesai & Cetak Struk (Lanjut Pelanggan Baru)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== TAB 2: KELOLA PRODUK & HARGA ==================== -->
+      <div class="tab-pane fade" id="tab-produk" role="tabpanel">
+        <div class="row g-3">
+          <!-- Form Tambah/Ubah Produk -->
+          <div class="col-md-5">
+            <div class="card border-0 shadow-sm rounded-3">
+              <div class="card-header bg-white py-3 border-0">
+                <h5 class="mb-0 fw-bold" id="formProductTitle">
+                  <i class="bi bi-plus-circle text-primary me-2"></i>Tambah Produk & Harga
+                </h5>
+              </div>
+              <div class="card-body pt-0">
+                <form id="productForm">
+                  <input type="hidden" id="productId">
+                  <input type="hidden" id="productPhotoBase64">
+                  <!-- Menyimpan array multi-sisi AI (Depan & Belakang) -->
+                  <input type="hidden" id="productEmbeddingsJson" value="[]">
+
+                  <!-- Foto Fisik & Perekaman Multi-Sisi AI -->
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold d-flex justify-content-between align-items-center">
+                      <span><i class="bi bi-image me-1"></i>Pola Visual AI Produk</span>
+                      <span class="text-muted fw-normal small" id="photoStatusLabel">Belum Ada Foto</span>
+                    </label>
+
+                    <div class="photo-preview-box mb-2" id="photoBox">
+                      <div id="photoPlaceholder" class="text-center p-3 text-muted">
+                        <i class="bi bi-image fs-1 opacity-50 d-block mb-1"></i>
+                        <span class="small">Gunakan tombol kamera AI di bawah untuk merekam tampak depan & belakang produk</span>
+                      </div>
+                      <img id="photoPreviewImg" alt="Preview Foto Barang">
+                    </div>
+
+                    <!-- Label Status Multi-Sisi Tersimpan -->
+                    <div id="aiSidesPillsRow" class="mb-2 d-flex gap-1 flex-wrap justify-content-center" style="display:none;">
+                      <!-- Diisi dinamis -->
+                    </div>
+
+                    <!-- DUA TOMBOL SCAN KAMERA SESUAI PERMINTAAN USER -->
+                    <div class="d-grid gap-2">
+                      <button type="button" class="btn text-white btn-sm fw-bold shadow-sm" style="background-color: #0d9488;" id="btnOpenAiCameraModal">
+                        <i class="bi bi-camera-fill me-1"></i>Scan Kamera AI (Rekam Depan & Belakang)
+                      </button>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-1" id="photoActionRow" style="display:none !important;">
+                      <button type="button" class="btn btn-link text-danger p-0 small text-decoration-none" id="btnRemovePhoto">
+                        <i class="bi bi-trash me-1"></i>Hapus Foto & Pola AI
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold">Nama Produk <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="productName" placeholder="Contoh: Indomie Goreng" required>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold">Harga Jual (Rp) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <span class="input-group-text">Rp</span>
+                      <input type="number" class="form-control" id="productPrice" placeholder="Contoh: 3500" min="0" required>
+                    </div>
+                  </div>
+
+                  <!-- Scan Barcode via Kamera ke Form -->
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold">Kode Barcode Kemasan</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="productBarcode" placeholder="Scan atau ketik nomor barcode">
+                      <button class="btn btn-primary" type="button" id="btnOpenBarcodeModal" title="Pindai Barcode via Kamera">
+                        <i class="bi bi-upc-scan me-1"></i>Scan Barcode
+                      </button>
+                    </div>
+                    <small class="text-muted">Arahkan kamera ke barcode kemasan, otomatis terisi meskipun barcode terbalik.</small>
+                  </div>
+
+                  <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary flex-grow-1 fw-bold" id="btnSaveProduct">
+                      <i class="bi bi-save me-1"></i>Simpan Produk
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btnCancelEdit" style="display:none;">
+                      Batal
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabel Daftar Produk -->
+          <div class="col-md-7">
+            <div class="card border-0 shadow-sm rounded-3">
+              <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-database me-2"></i>Daftar Produk & Harga</h5>
+                <span class="badge bg-primary rounded-pill" id="totalProductsBadge">0 Produk</span>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 540px; overflow-y: auto;">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width: 50px;">Foto</th>
+                        <th>Nama Produk</th>
+                        <th>Harga</th>
+                        <th>Barcode</th>
+                        <th>Pola AI</th>
+                        <th class="text-end">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="productTableBody">
+                      <!-- Diisi JavaScript -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer bg-white border-0 py-2 d-flex justify-content-between">
+                <button class="btn btn-outline-secondary btn-sm" id="btnExportData">
+                  <i class="bi bi-download me-1"></i>Backup Data (JSON)
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="btnImportData">
+                  <i class="bi bi-upload me-1"></i>Restore Data
+                </button>
+                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 3: PENGATURAN CLOUD ==================== -->
+      <div class="tab-pane fade" id="tab-pengaturan" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-3 max-width-md mx-auto">
+          <div class="card-body p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-cloud-arrow-up-fill text-primary me-2"></i>Sinkronisasi Cloud (Firebase Firestore)</h5>
+            <p class="text-muted small">
+              Secara default, data tersimpan di memori browser HP ini. Jika ingin data tersinkronisasi online ke perangkat kasir lainnya, Anda dapat memasukkan konfigurasi Firebase Firestore di sini.
+            </p>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Firebase Configuration (JSON / JavaScript Object)</label>
+              <textarea class="form-control font-monospace small" id="firebaseConfigInput" rows="7" placeholder='{
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+}'></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-success" id="btnConnectFirebase">
+                <i class="bi bi-check-circle me-1"></i>Sambungkan ke Cloud
+              </button>
+              <button class="btn btn-outline-secondary" id="btnDisconnectFirebase">
+                Gunakan Mode Lokal Saja
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 1: SCAN KAMERA BARCODE UNTUK FORM ==================== -->
+  <div class="modal fade" id="barcodeFormModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title fw-bold">
+            <i class="bi bi-upc-scan text-primary me-2"></i>Scan Kamera Barcode
+          </h6>
+          <button type="button" class="btn-close" id="btnCloseBarcodeModal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="scanner-box" style="min-height: 240px;">
+            <div id="modalBarcodeReader"></div>
+          </div>
+          <p class="text-center text-muted small mt-2 mb-0">
+            Arahkan kamera ke barcode. Otomatis terdeteksi meskipun posisi barcode terbalik.
+          </p>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnCancelBarcodeModal">Batal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: SCAN KAMERA AI (MULTI-SISI DEPAN & BELAKANG) ==================== -->
+  <div class="modal fade" id="aiCameraModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title fw-bold text-teal" style="color: #0d9488;">
+            <i class="bi bi-camera-fill me-2"></i>Scan Kamera AI (Perekaman Produk)
+          </h6>
+          <button type="button" class="btn-close" id="btnCloseAiModal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="scanner-box" style="min-height: 260px;">
+            <video id="modalAiVideo" autoplay playsinline muted></video>
+            <div class="visual-guide-box">
+              <span>Fokus Badan / Logo Produk</span>
+            </div>
+          </div>
+
+          <!-- Status Sisi yang Direkam -->
+          <div class="bg-light p-2 rounded-3 border mt-2 text-center small">
+            <span class="text-muted d-block mb-1">Sampel Pola AI yang Sudah Direkam:</span>
+            <div id="modalRecordedSidesText" class="fw-bold text-dark">Belum ada sampel</div>
+          </div>
+
+          <p class="text-muted small mt-2 mb-0">
+            <b>Tips Bolak-Balik:</b> Pertama rekam <b>Sisi Depan</b>. Lalu balik kemasan produk dan rekam <b>Sisi Belakang</b> agar saat di kasir dibolak-balik tetap bisa terdeteksi!
+          </p>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnCancelAiModal">Selesai / Tutup</button>
+          <button type="button" class="btn text-white fw-bold shadow-sm" style="background-color: #0d9488;" id="btnCaptureAiModal">
+            <i class="bi bi-camera-fill me-1"></i>Jepret Sisi Ini (+Simpan)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Struk Pembayaran Lengkap dengan Kembalian -->
+  <div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title fw-bold">Struk Pembayaran</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body font-monospace small" id="receiptContent"></div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Cetak Struk
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Canvas untuk Cropping Objek Kamera AI -->
+  <canvas id="offscreenCanvas" style="display: none;"></canvas>
+
+  <!-- Audio Sintesis: Bip Hijau Sukses & Buzz Merah Peringatan -->
+  <script>
+    function playSuccessBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 (Nada Tinggi Bersih)
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+      } catch (e) {}
+    }
+
+    function playWarningBuzz() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime); // Nada Rendah Peringatan
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      } catch (e) {}
+    }
+  </script>
+
+  <!-- External Libraries (CDN) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Application Logic -->
+  <script>
+    let products = [];
+    let cart = [];
+    let grandTotalAmount = 0;
+    let html5QrCode = null;
+    let modalBarcodeQrCode = null;
+    let currentKasirMode = "barcode"; // 'barcode' atau 'visual_ai'
+    let isKasirCameraRunning = false;
+    let kasirVideoStream = null;
+    let modalAiVideoStream = null;
+
+    let mobileNetModel = null;
+    let isModelLoading = false;
+    let db = null;
+    let aiLoopInterval = null;
+
+    // ==================== LOGIKA 1 PELANGGAN = 1X SCAN PER PRODUK ====================
+    // Menyimpan ID produk yang SUDAH pernah di-scan pada pelanggan ini
+    // Jika di-scan lagi -> Warna Merah + Bunyi Buzz
+    // Kunci akan dibuka kembali saat klik "Reset Pelanggan Baru"
+    const currentCustomerScannedSet = new Set();
+
+    // Modals untuk Form Produk
+    let barcodeFormModalInstance = null;
+    let aiCameraModalInstance = null;
+
+    // Temporary list embedding untuk produk yang sedang diedit
+    let currentProductEmbeddings = [];
+
+    const LOCAL_STORAGE_KEY = "SMART_POS_PRODUCTS_DATA_V7";
+    const FIREBASE_CONFIG_KEY = "SMART_POS_FIREBASE_CONFIG";
+
+    function formatRupiah(number) {
+      return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0
+      }).format(number);
+    }
+
+    // ==================== COSINE SIMILARITY ENGINE (VISUAL AI) ====================
+    function cosineSimilarity(vecA, vecB) {
+      if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+      let dotProduct = 0.0;
+      let normA = 0.0;
+      let normB = 0.0;
+      for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+      }
+      if (normA === 0 || normB === 0) return 0;
+      return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    async function loadMobileNetModel() {
+      if (!mobileNetModel && !isModelLoading) {
+        isModelLoading = true;
+        try {
+          mobileNetModel = await mobilenet.load({ version: 2, alpha: 1.0 });
+          console.log("MobileNet Visual AI model siap!");
+        } catch (e) {
+          console.error("Gagal memuat MobileNet:", e);
+        } finally {
+          isModelLoading = false;
+        }
+      }
+    }
+
+    function extractEmbedding(canvasEl) {
+      if (!mobileNetModel) return null;
+      try {
+        return tf.tidy(() => {
+          const activation = mobileNetModel.infer(canvasEl, true);
+          return Array.from(activation.dataSync());
+        });
+      } catch (err) {
+        console.error("Ekstraksi embedding gagal:", err);
+        return null;
+      }
+    }
+
+    // TIGHT CENTER CROP (Mengabaikan tangan & latar belakang)
+    function cropTightCenterSquareFromVideo(videoEl, targetSize = 224) {
+      const canvas = document.getElementById("offscreenCanvas");
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+      const ctx = canvas.getContext("2d");
+
+      const videoWidth = videoEl.videoWidth || 640;
+      const videoHeight = videoEl.videoHeight || 480;
+      const minDim = Math.min(videoWidth, videoHeight);
+      
+      const cropSize = Math.round(minDim * 0.65);
+      const startX = Math.round((videoWidth - cropSize) / 2);
+      const startY = Math.round((videoHeight - cropSize) / 2);
+
+      ctx.drawImage(videoEl, startX, startY, cropSize, cropSize, 0, 0, targetSize, targetSize);
+      return canvas;
+    }
+
+    // ==================== INISIALISASI DATA ====================
+    function initDefaultData() {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        try {
+          products = JSON.parse(saved);
+        } catch (e) {
+          products = [];
+        }
+      } else {
+        products = [
+          { id: "1", name: "Indomie Goreng", price: 3500, barcode: "8998866200224", photo: "", embeddings: [] },
+          { id: "2", name: "Aqua Botol 600ml", price: 3000, barcode: "8886008101053", photo: "", embeddings: [] },
+          { id: "3", name: "Teh Botol Sosro", price: 4000, barcode: "8992753211119", photo: "", embeddings: [] }
+        ];
+        saveProductsToStorage();
+      }
+      renderProductTable();
+    }
+
+    function saveProductsToStorage() {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+      renderProductTable();
+      if (db) {
+        syncAllToFirestore();
+      }
+    }
+
+    // ==================== LOGIKA SCAN KASIR (KUNCI 1 PELANGGAN = 1X SCAN PER PRODUK) ====================
+    let lastHandledScanCode = null;
+    let lastHandledTime = 0;
+
+    function processCashierItemScanned(matchedProduct) {
+      const now = Date.now();
+      // Debounce hardware kamera 1.2 detik agar tidak spam getar
+      if (matchedProduct.id === lastHandledScanCode && (now - lastHandledTime < 1200)) {
+        return;
+      }
+      lastHandledScanCode = matchedProduct.id;
+      lastHandledTime = now;
+
+      // ATURAN 1: CEK APAKAH BARANG INI SUDAH PERNAH DI-SCAN PADA PELANGGAN SAAT INI?
+      if (currentCustomerScannedSet.has(matchedProduct.id)) {
+        // SUDAH PERNAH DI-SCAN -> MUNCULKAN PERINGATAN MERAH + BUNYI BUZZ
+        playWarningBuzz();
+        if (navigator.vibrate) navigator.vibrate([100, 60, 100]); // Getar peringatan
+        showQuickToast(`⚠️ "${matchedProduct.name}" SUDAH DI-SCAN! Tambah jumlah di tabel bawah.`, "danger");
+        return;
+      }
+
+      // ATURAN 2: BELUM PERNAH DI-SCAN -> MASUKKAN KE KERANJANG + BUNYI HIJAU
+      currentCustomerScannedSet.add(matchedProduct.id);
+      playSuccessBeep();
+      if (navigator.vibrate) navigator.vibrate(80);
+
+      cart.push({ product: matchedProduct, quantity: 1 });
+      renderCart();
+      showQuickToast(`✅ "${matchedProduct.name}" (+1) — ${formatRupiah(matchedProduct.price)}`, "success");
+    }
+
+    let toastTimeout = null;
+    function showQuickToast(message, type = "success") {
+      const toastEl = document.getElementById("quickToastAlert");
+      const toastText = document.getElementById("quickToastText");
+      toastText.textContent = message;
+
+      if (type === "danger") {
+        toastEl.className = "alert alert-danger shadow quick-alert py-2 px-3 fw-bold small text-center";
+      } else {
+        toastEl.className = "alert alert-success shadow quick-alert py-2 px-3 fw-bold small text-center";
+      }
+
+      toastEl.style.display = "block";
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toastEl.style.display = "none";
+      }, 2500);
+    }
+
+    // ==================== MODAL 1: SCAN KAMERA BARCODE UNTUK FORM ====================
+    const barcodeModalEl = document.getElementById("barcodeFormModal");
+    barcodeFormModalInstance = new bootstrap.Modal(barcodeModalEl);
+
+    async function openBarcodeFormScanner() {
+      barcodeFormModalInstance.show();
+      setTimeout(async () => {
+        try {
+          modalBarcodeQrCode = new Html5Qrcode("modalBarcodeReader", {
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+          });
+          await modalBarcodeQrCode.start(
+            { facingMode: "environment" },
+            { fps: 12, qrbox: { width: 250, height: 160 } },
+            (decodedText) => {
+              playSuccessBeep();
+              document.getElementById("productBarcode").value = decodedText.trim();
+              closeBarcodeFormScanner();
+              alert(`Barcode terdeteksi: ${decodedText}`);
+            },
+            () => {}
+          );
+        } catch (err) {
+          console.error("Gagal start modal scanner:", err);
+          alert("Gagal membuka kamera: Pastikan izin kamera sudah diaktifkan.");
+          closeBarcodeFormScanner();
+        }
+      }, 400);
+    }
+
+    async function closeBarcodeFormScanner() {
+      if (modalBarcodeQrCode) {
+        try {
+          await modalBarcodeQrCode.stop();
+          modalBarcodeQrCode.clear();
+        } catch (e) {}
+        modalBarcodeQrCode = null;
+      }
+      barcodeFormModalInstance.hide();
+    }
+
+    document.getElementById("btnOpenBarcodeModal").addEventListener("click", openBarcodeFormScanner);
+    document.getElementById("btnCloseBarcodeModal").addEventListener("click", closeBarcodeFormScanner);
+    document.getElementById("btnCancelBarcodeModal").addEventListener("click", closeBarcodeFormScanner);
+
+    // ==================== MODAL 2: SCAN KAMERA AI MULTI-SISI (DEPAN & BELAKANG) ====================
+    const aiCameraModalEl = document.getElementById("aiCameraModal");
+    aiCameraModalInstance = new bootstrap.Modal(aiCameraModalEl);
+
+    async function openAiCameraModal() {
+      await loadMobileNetModel();
+      aiCameraModalInstance.show();
+      updateModalRecordedSidesText();
+
+      const video = document.getElementById("modalAiVideo");
+      try {
+        modalAiVideoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false
+        });
+        video.srcObject = modalAiVideoStream;
+      } catch (err) {
+        console.error("Gagal buka kamera AI modal:", err);
+        alert("Gagal mengakses kamera HP: " + err);
+        closeAiCameraModal();
+      }
+    }
+
+    function closeAiCameraModal() {
+      if (modalAiVideoStream) {
+        modalAiVideoStream.getTracks().forEach(track => track.stop());
+        modalAiVideoStream = null;
+      }
+      aiCameraModalInstance.hide();
+    }
+
+    function updateModalRecordedSidesText() {
+      const el = document.getElementById("modalRecordedSidesText");
+      if (currentProductEmbeddings.length === 0) {
+        el.innerHTML = '<span class="text-muted">Belum ada sampel. Arahkan sisi depan lalu klik tombol di bawah.</span>';
+      } else if (currentProductEmbeddings.length === 1) {
+        el.innerHTML = '<span class="text-primary">1 Sampel (Sisi Depan) tersimpan. Balik kemasan & klik lagi untuk rekam Sisi Belakang!</span>';
+      } else {
+        el.innerHTML = `<span class="text-success">${currentProductEmbeddings.length} Sampel (Depan & Belakang) tersimpan! Siap di-scan bolak-balik.</span>`;
+      }
+    }
+
+    // Jepret dan Ekstrak Pola AI (Bisa Depan, Belakang, Samping)
+    document.getElementById("btnCaptureAiModal").addEventListener("click", async function() {
+      const video = document.getElementById("modalAiVideo");
+      if (!video || !video.srcObject) return;
+
+      const btn = this;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Merekam Pola Sisi...';
+
+      try {
+        const croppedCanvas = cropTightCenterSquareFromVideo(video, 224);
+        const photoDataUrl = croppedCanvas.toDataURL("image/jpeg", 0.75);
+
+        let embeddingVector = null;
+        if (mobileNetModel) {
+          embeddingVector = extractEmbedding(croppedCanvas);
+        }
+
+        if (embeddingVector) {
+          currentProductEmbeddings.push(embeddingVector);
+          // Simpan hingga 4 sudut sisi produk
+          if (currentProductEmbeddings.length > 4) {
+            currentProductEmbeddings.shift();
+          }
+        }
+
+        setProductPhotoPreview(photoDataUrl, currentProductEmbeddings);
+        playSuccessBeep();
+        updateModalRecordedSidesText();
+
+        if (currentProductEmbeddings.length === 1) {
+          alert("Sisi 1 berhasil direkam! Sekarang BALIK KEMASAN ke sisi belakang, lalu klik tombol ini sekali lagi.");
+        } else {
+          alert(`Sisi ${currentProductEmbeddings.length} berhasil direkam! Produk ini kini dapat dikenali baik tampak depan maupun belakang.`);
+        }
+      } catch (err) {
+        console.error("Gagal simpan gambar AI:", err);
+        alert("Gagal memproses gambar: " + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-camera-fill me-1"></i>Jepret Sisi Ini (+Simpan)';
+      }
+    });
+
+    document.getElementById("btnOpenAiCameraModal").addEventListener("click", openAiCameraModal);
+    document.getElementById("btnCloseAiModal").addEventListener("click", closeAiCameraModal);
+    document.getElementById("btnCancelAiModal").addEventListener("click", closeAiCameraModal);
+
+    function setProductPhotoPreview(base64Url, embeddingsArray = []) {
+      const photoPreviewImg = document.getElementById("photoPreviewImg");
+      const photoPlaceholder = document.getElementById("photoPlaceholder");
+      const photoActionRow = document.getElementById("photoActionRow");
+      const productPhotoBase64 = document.getElementById("productPhotoBase64");
+      const productEmbeddingsJson = document.getElementById("productEmbeddingsJson");
+      const photoStatusLabel = document.getElementById("photoStatusLabel");
+      const aiSidesPillsRow = document.getElementById("aiSidesPillsRow");
+
+      if (base64Url) {
+        photoPreviewImg.src = base64Url;
+        photoPreviewImg.style.display = "block";
+        photoPlaceholder.style.display = "none";
+        photoActionRow.style.setProperty("display", "flex", "important");
+        productPhotoBase64.value = base64Url;
+
+        if (embeddingsArray && embeddingsArray.length > 0) {
+          productEmbeddingsJson.value = JSON.stringify(embeddingsArray);
+          photoStatusLabel.textContent = `Pola AI: ${embeddingsArray.length} Sisi`;
+          photoStatusLabel.className = "text-success fw-bold small";
+
+          aiSidesPillsRow.innerHTML = "";
+          embeddingsArray.forEach((_, idx) => {
+            const span = document.createElement("span");
+            span.className = "side-pill";
+            span.textContent = idx === 0 ? "Sisi Depan" : (idx === 1 ? "Sisi Belakang" : `Sisi ${idx + 1}`);
+            aiSidesPillsRow.appendChild(span);
+          });
+          aiSidesPillsRow.style.display = "flex";
+        } else {
+          photoStatusLabel.textContent = "Foto Terpasang";
+          photoStatusLabel.className = "text-primary fw-bold small";
+          aiSidesPillsRow.style.display = "none";
+        }
+      } else {
+        photoPreviewImg.src = "";
+        photoPreviewImg.style.display = "none";
+        photoPlaceholder.style.display = "block";
+        photoActionRow.style.setProperty("display", "none", "important");
+        productPhotoBase64.value = "";
+        productEmbeddingsJson.value = "[]";
+        currentProductEmbeddings = [];
+        photoStatusLabel.textContent = "Belum Ada Foto";
+        photoStatusLabel.className = "text-muted fw-normal small";
+        aiSidesPillsRow.style.display = "none";
+      }
+    }
+
+    document.getElementById("btnRemovePhoto").addEventListener("click", function() {
+      setProductPhotoPreview("");
+    });
+
+    // ==================== KONTROL KAMERA KASIR ====================
+    const btnModeBarcode = document.getElementById("btnModeBarcode");
+    const btnModeVisualAi = document.getElementById("btnModeVisualAi");
+    const sensitivityRow = document.getElementById("sensitivityRow");
+
+    btnModeBarcode.addEventListener("click", () => switchKasirMode("barcode"));
+    btnModeVisualAi.addEventListener("click", () => switchKasirMode("visual_ai"));
+
+    function switchKasirMode(mode) {
+      if (currentKasirMode === mode) return;
+      currentKasirMode = mode;
+
+      if (mode === "barcode") {
+        btnModeBarcode.className = "btn btn-outline-primary fw-bold py-2 mode-btn active";
+        btnModeVisualAi.className = "btn btn-outline-secondary fw-bold py-2 mode-btn-ai";
+        sensitivityRow.style.setProperty("display", "none", "important");
+      } else {
+        btnModeBarcode.className = "btn btn-outline-primary fw-bold py-2 mode-btn";
+        btnModeVisualAi.className = "btn btn-outline-secondary fw-bold py-2 mode-btn-ai active";
+        sensitivityRow.style.setProperty("display", "flex", "important");
+      }
+
+      if (isKasirCameraRunning) {
+        stopKasirCamera();
+        startKasirCamera();
+      }
+    }
+
+    async function startKasirCamera() {
+      stopKasirCamera();
+      document.getElementById("scannerPlaceholder").style.display = "none";
+      document.getElementById("btnStartActiveScanner").style.display = "none";
+      document.getElementById("btnStopActiveScanner").style.display = "block";
+      isKasirCameraRunning = true;
+
+      if (currentKasirMode === "barcode") {
+        document.getElementById("reader").style.display = "block";
+        document.getElementById("videoAiPreview").style.display = "none";
+        document.getElementById("visualGuideBox").style.display = "none";
+        document.getElementById("scannerStatusBadge").className = "badge bg-primary";
+        document.getElementById("scannerStatusBadge").textContent = "Scan Barcode Aktif";
+
+        // Konfigurasi Barcode Akurat 360 Derajat (Bolak-balik)
+        html5QrCode = new Html5Qrcode("reader", {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        });
+        const config = { fps: 12, qrbox: { width: 250, height: 160 } };
+        try {
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => handleBarcodeContinuousScan(decodedText),
+            () => {}
+          );
+        } catch (err) {
+          console.error("Gagal start barcode camera:", err);
+          showQuickToast("Gagal membuka kamera: " + err, "danger");
+          stopKasirCamera();
+        }
+      } else {
+        document.getElementById("reader").style.display = "none";
+        const video = document.getElementById("videoAiPreview");
+        video.style.display = "block";
+        document.getElementById("visualGuideBox").style.display = "flex";
+        document.getElementById("scannerStatusBadge").className = "badge text-white";
+        document.getElementById("scannerStatusBadge").style.backgroundColor = "#0d9488";
+        document.getElementById("scannerStatusBadge").textContent = "Scan Foto AI Aktif...";
+
+        await loadMobileNetModel();
+
+        try {
+          kasirVideoStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+            audio: false
+          });
+          video.srcObject = kasirVideoStream;
+          startVisualAiContinuousScanLoop();
+        } catch (err) {
+          console.error("Gagal start AI video stream:", err);
+          showQuickToast("Gagal membuka kamera: " + err, "danger");
+          stopKasirCamera();
+        }
+      }
+    }
+
+    function stopKasirCamera() {
+      if (html5QrCode) {
+        try {
+          html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+        } catch (e) {}
+        html5QrCode = null;
+      }
+
+      if (kasirVideoStream) {
+        kasirVideoStream.getTracks().forEach(t => t.stop());
+        kasirVideoStream = null;
+      }
+
+      if (aiLoopInterval) {
+        clearInterval(aiLoopInterval);
+        aiLoopInterval = null;
+      }
+
+      isKasirCameraRunning = false;
+      document.getElementById("scannerPlaceholder").style.display = "block";
+      document.getElementById("reader").style.display = "none";
+      document.getElementById("videoAiPreview").style.display = "none";
+      document.getElementById("visualGuideBox").style.display = "none";
+      document.getElementById("btnStartActiveScanner").style.display = "block";
+      document.getElementById("btnStopActiveScanner").style.display = "none";
+      document.getElementById("scannerStatusBadge").className = "badge bg-secondary";
+      document.getElementById("scannerStatusBadge").textContent = "Standby";
+    }
+
+    // Pemindai Barcode Kontinu Akurat
+    function handleBarcodeContinuousScan(barcode) {
+      const cleanCode = barcode.trim();
+      const matched = products.find(p => p.barcode && (
+        p.barcode.trim() === cleanCode ||
+        p.barcode.trim().replace(/^0+/, "") === cleanCode.replace(/^0+/, "")
+      ));
+
+      if (matched) {
+        processCashierItemScanned(matched);
+      } else {
+        const now = Date.now();
+        if (cleanCode !== lastHandledScanCode || (now - lastHandledTime > 3000)) {
+          lastHandledScanCode = cleanCode;
+          lastHandledTime = now;
+          playWarningBuzz();
+          showQuickToast(`⚠️ Barcode [${cleanCode}] belum terdaftar di produk!`, "danger");
+        }
+      }
+    }
+
+    // Pemindai Foto AI Kontinu (Mendukung Multi-Sisi Depan & Belakang)
+    function startVisualAiContinuousScanLoop() {
+      if (aiLoopInterval) clearInterval(aiLoopInterval);
+
+      aiLoopInterval = setInterval(async () => {
+        if (!isKasirCameraRunning || !mobileNetModel) return;
+
+        const video = document.getElementById("videoAiPreview");
+        if (!video || !video.srcObject || video.readyState < 2) return;
+
+        const aiProducts = products.filter(p => (p.embeddings && p.embeddings.length > 0) || (p.embedding && p.embedding.length > 0));
+        if (aiProducts.length === 0) return;
+
+        try {
+          const croppedCanvas = cropTightCenterSquareFromVideo(video, 224);
+          const currentEmbedding = extractEmbedding(croppedCanvas);
+          if (!currentEmbedding) return;
+
+          const threshold = parseFloat(document.getElementById("aiSensitivitySelect").value) || 0.71;
+          let bestMatch = null;
+          let highestSimilarity = 0.0;
+
+          for (const prod of aiProducts) {
+            const samples = prod.embeddings && prod.embeddings.length > 0
+              ? prod.embeddings
+              : (prod.embedding ? [prod.embedding] : []);
+
+            // Cocokkan dengan setiap sisi yang sudah direkam (Depan / Belakang)
+            for (const sampleEmb of samples) {
+              const sim = cosineSimilarity(currentEmbedding, sampleEmb);
+              if (sim > highestSimilarity) {
+                highestSimilarity = sim;
+                bestMatch = prod;
+              }
+            }
+          }
+
+          if (bestMatch && highestSimilarity >= threshold) {
+            processCashierItemScanned(bestMatch);
+          }
+        } catch (err) {
+          console.error("AI auto detection error:", err);
+        }
+      }, 700);
+    }
+
+    // ==================== KERANJANG BELANJA & KALKULATOR KEMBALIAN ====================
+    function renderCart() {
+      const tbody = document.getElementById("cartTableBody");
+      const emptyMsg = document.getElementById("emptyCartMessage");
+      const totalItemsCount = document.getElementById("totalItemsCount");
+      const grandTotalPrice = document.getElementById("grandTotalPrice");
+
+      tbody.innerHTML = "";
+      if (cart.length === 0) {
+        emptyMsg.style.display = "block";
+      } else {
+        emptyMsg.style.display = "none";
+      }
+
+      let totalItems = 0;
+      grandTotalAmount = 0;
+
+      cart.forEach((item, index) => {
+        const subtotal = item.product.price * item.quantity;
+        totalItems += item.quantity;
+        grandTotalAmount += subtotal;
+
+        const photoHtml = item.product.photo
+          ? `<img src="${item.product.photo}" class="prod-thumb" alt="Foto">`
+          : `<div class="prod-thumb d-flex align-items-center justify-content-center text-muted"><i class="bi bi-box-seam fs-5"></i></div>`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${photoHtml}</td>
+          <td>
+            <div class="fw-bold text-dark">${item.product.name}</div>
+            <small class="text-muted font-monospace">${item.product.barcode || "Visual AI"}</small>
+          </td>
+          <td class="text-nowrap">${formatRupiah(item.product.price)}</td>
+          <td class="text-center">
+            <div class="input-group input-group-sm justify-content-center" style="max-width: 130px; margin: 0 auto;">
+              <button class="btn btn-outline-secondary px-2" onclick="updateCartQty(${index}, -1)">
+                <i class="bi bi-dash"></i>
+              </button>
+              <input type="number" class="form-control text-center fw-bold px-1" value="${item.quantity}" min="1" onchange="setCartItemExactQty(${index}, this.value)" style="max-width: 55px;">
+              <button class="btn btn-outline-secondary px-2" onclick="updateCartQty(${index}, 1)">
+                <i class="bi bi-plus"></i>
+              </button>
+            </div>
+          </td>
+          <td class="text-end fw-bold text-success text-nowrap">${formatRupiah(subtotal)}</td>
+          <td class="text-end">
+            <button class="btn btn-link text-danger p-0" onclick="removeFromCart(${index})" title="Hapus Barang">
+              <i class="bi bi-x-circle fs-5"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      totalItemsCount.textContent = `${totalItems} item`;
+      grandTotalPrice.textContent = formatRupiah(grandTotalAmount);
+
+      // Hitung Ulang Kembalian Uang Tunai
+      calculateChange();
+    }
+
+    function updateCartQty(index, delta) {
+      if (!cart[index]) return;
+      cart[index].quantity += delta;
+      if (cart[index].quantity <= 0) {
+        removeFromCart(index);
+        return;
+      }
+      renderCart();
+    }
+
+    function setCartItemExactQty(index, newQtyStr) {
+      if (!cart[index]) return;
+      let val = parseInt(newQtyStr);
+      if (isNaN(val) || val <= 0) val = 1;
+      cart[index].quantity = val;
+      renderCart();
+    }
+
+    function removeFromCart(index) {
+      if (!cart[index]) return;
+      const removedId = cart[index].product.id;
+      cart.splice(index, 1);
+      // Hapus dari set terkunci agar bisa di-scan ulang jika diinginkan
+      currentCustomerScannedSet.delete(removedId);
+      renderCart();
+    }
+
+    // ==================== KALKULATOR UANG & KEMBALIAN ====================
+    const cashPaidInput = document.getElementById("cashPaidInput");
+    const changeAmountDisplay = document.getElementById("changeAmountDisplay");
+    const changeLabelDisplay = document.getElementById("changeLabelDisplay");
+    const changeCardContainer = document.getElementById("changeCardContainer");
+
+    cashPaidInput.addEventListener("input", calculateChange);
+
+    function calculateChange() {
+      const cashStr = cashPaidInput.value;
+      const cashPaid = parseFloat(cashStr) || 0;
+
+      if (cart.length === 0 || cashStr === "") {
+        changeLabelDisplay.textContent = "Uang Kembalian:";
+        changeAmountDisplay.textContent = "Rp 0";
+        changeAmountDisplay.className = "fs-3 fw-bold text-secondary";
+        changeCardContainer.style.backgroundColor = "#f8fafc";
+        return;
+      }
+
+      const change = cashPaid - grandTotalAmount;
+      if (change >= 0) {
+        changeLabelDisplay.textContent = "Uang Kembalian:";
+        changeAmountDisplay.textContent = formatRupiah(change);
+        changeAmountDisplay.className = "fs-3 fw-bold text-primary";
+        changeCardContainer.style.backgroundColor = "#eff6ff";
+      } else {
+        changeLabelDisplay.textContent = "Uang Kurang:";
+        changeAmountDisplay.textContent = formatRupiah(Math.abs(change));
+        changeAmountDisplay.className = "fs-3 fw-bold text-danger";
+        changeCardContainer.style.backgroundColor = "#fef2f2";
+      }
+    }
+
+    function setQuickCash(amount) {
+      if (amount === "exact") {
+        cashPaidInput.value = grandTotalAmount > 0 ? grandTotalAmount : "";
+      } else {
+        cashPaidInput.value = amount;
+      }
+      calculateChange();
+    }
+
+    // RESET UNTUK PELANGGAN BARU (Buka Kunci Scan Kembali)
+    function clearCart() {
+      if (cart.length === 0 && currentCustomerScannedSet.size === 0) return;
+      if (confirm("Reset keranjang untuk pelanggan baru?\nSemua barang akan dikosongkan dan kunci scan dibuka kembali.")) {
+        resetForNewCustomer();
+      }
+    }
+
+    function resetForNewCustomer() {
+      cart = [];
+      currentCustomerScannedSet.clear(); // BUKA KUNCI SCAN BARANG
+      cashPaidInput.value = "";
+      renderCart();
+      showQuickToast("✅ Kasir telah direset. Siap melayani pelanggan baru!", "success");
+    }
+
+    // ==================== RENDER TABEL MASTER PRODUK ====================
+    function renderProductTable() {
+      const tbody = document.getElementById("productTableBody");
+      const badge = document.getElementById("totalProductsBadge");
+      tbody.innerHTML = "";
+      badge.textContent = `${products.length} Produk`;
+
+      products.forEach((p) => {
+        const photoHtml = p.photo
+          ? `<img src="${p.photo}" class="prod-thumb" alt="Foto">`
+          : `<div class="prod-thumb d-flex align-items-center justify-content-center text-muted"><i class="bi bi-box-seam fs-5"></i></div>`;
+
+        const sampleCount = p.embeddings ? p.embeddings.length : (p.embedding ? 1 : 0);
+        const aiBadge = sampleCount > 0
+          ? `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check2-circle me-1"></i>${sampleCount} Sisi AI</span>`
+          : `<span class="badge bg-light text-muted border">Belum Ada</span>`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${photoHtml}</td>
+          <td><div class="fw-bold">${p.name}</div></td>
+          <td class="text-success fw-bold">${formatRupiah(p.price)}</td>
+          <td><span class="badge bg-light text-dark font-monospace border">${p.barcode || "-"}</span></td>
+          <td>${aiBadge}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editProduct('${p.id}')" title="Ubah">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct('${p.id}')" title="Hapus">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById("productForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const id = document.getElementById("productId").value || Date.now().toString();
+      const name = document.getElementById("productName").value.trim();
+      const price = parseFloat(document.getElementById("productPrice").value) || 0;
+      const barcode = document.getElementById("productBarcode").value.trim();
+      const photo = document.getElementById("productPhotoBase64").value || "";
+      const embeddingsJsonStr = document.getElementById("productEmbeddingsJson").value;
+      let embeddings = [];
+      if (embeddingsJsonStr) {
+        try { embeddings = JSON.parse(embeddingsJsonStr); } catch (e) {}
+      }
+
+      const existingIndex = products.findIndex(p => p.id === id);
+      if (existingIndex >= 0) {
+        if (embeddings.length === 0 && products[existingIndex].embeddings) {
+          embeddings = products[existingIndex].embeddings;
+        }
+        if (!photo && products[existingIndex].photo) {
+          photo = products[existingIndex].photo;
+        }
+        products[existingIndex] = { id, name, price, barcode, photo, embeddings };
+      } else {
+        products.push({ id, name, price, barcode, photo, embeddings });
+      }
+
+      saveProductsToStorage();
+      resetProductForm();
+      alert("Produk berhasil disimpan!");
+    });
+
+    function editProduct(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+      document.getElementById("productId").value = p.id;
+      document.getElementById("productName").value = p.name;
+      document.getElementById("productPrice").value = p.price;
+      document.getElementById("productBarcode").value = p.barcode || "";
+
+      currentProductEmbeddings = p.embeddings && p.embeddings.length > 0
+        ? [...p.embeddings]
+        : (p.embedding ? [p.embedding] : []);
+
+      setProductPhotoPreview(p.photo || "", currentProductEmbeddings);
+
+      document.getElementById("formProductTitle").innerHTML = `<i class="bi bi-pencil-square text-warning me-2"></i>Ubah Produk`;
+      document.getElementById("btnCancelEdit").style.display = "inline-block";
+      document.getElementById("productName").focus();
+    }
+
+    function resetProductForm() {
+      document.getElementById("productId").value = "";
+      document.getElementById("productForm").reset();
+      currentProductEmbeddings = [];
+      setProductPhotoPreview("");
+      document.getElementById("formProductTitle").innerHTML = `<i class="bi bi-plus-circle text-primary me-2"></i>Tambah Produk & Harga`;
+      document.getElementById("btnCancelEdit").style.display = "none";
+    }
+
+    document.getElementById("btnCancelEdit").addEventListener("click", resetProductForm);
+
+    function deleteProduct(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+      if (confirm(`Yakin ingin menghapus "${p.name}"?`)) {
+        products = products.filter(prod => prod.id !== id);
+        saveProductsToStorage();
+      }
+    }
+
+    document.getElementById("btnStartActiveScanner").addEventListener("click", startKasirCamera);
+    document.getElementById("btnStopActiveScanner").addEventListener("click", stopKasirCamera);
+    document.getElementById("btnClearCart").addEventListener("click", clearCart);
+
+    document.getElementById("btnManualAdd").addEventListener("click", function() {
+      const query = document.getElementById("manualBarcodeInput").value.trim().toLowerCase();
+      if (!query) return;
+
+      const found = products.find(p => 
+        (p.barcode && p.barcode.toLowerCase() === query) ||
+        p.name.toLowerCase().includes(query)
+      );
+
+      if (found) {
+        processCashierItemScanned(found);
+        document.getElementById("manualBarcodeInput").value = "";
+      } else {
+        showQuickToast(`⚠️ Produk "${query}" tidak ditemukan!`, "danger");
+      }
+    });
+
+    // ==================== CHECKOUT & CETAK STRUK ====================
+    document.getElementById("btnCheckout").addEventListener("click", function() {
+      if (cart.length === 0) {
+        alert("Keranjang belanja masih kosong!");
+        return;
+      }
+
+      const cashPaid = parseFloat(cashPaidInput.value) || grandTotalAmount;
+      const change = cashPaid - grandTotalAmount;
+
+      let itemsListHtml = "";
+      cart.forEach(item => {
+        const subtotal = item.product.price * item.quantity;
+        itemsListHtml += `
+          <div class="d-flex justify-content-between mb-1">
+            <span>${item.product.name} x${item.quantity}</span>
+            <span>${formatRupiah(subtotal)}</span>
+          </div>
+        `;
+      });
+
+      const receiptDate = new Date().toLocaleString("id-ID");
+      const receiptHtml = `
+        <div class="text-center mb-3">
+          <div class="fw-bold fs-6">SMART POS KASIR</div>
+          <div class="text-muted" style="font-size:11px;">Tanggal: ${receiptDate}</div>
+        </div>
+        <hr class="my-2">
+        ${itemsListHtml}
+        <hr class="my-2">
+        <div class="d-flex justify-content-between fw-bold mb-1">
+          <span>TOTAL:</span>
+          <span>${formatRupiah(grandTotalAmount)}</span>
+        </div>
+        <div class="d-flex justify-content-between text-muted mb-1">
+          <span>Uang Tunai:</span>
+          <span>${formatRupiah(cashPaid)}</span>
+        </div>
+        <div class="d-flex justify-content-between fw-bold fs-6 text-primary">
+          <span>Kembalian:</span>
+          <span>${formatRupiah(change >= 0 ? change : 0)}</span>
+        </div>
+        <hr class="my-2">
+        <div class="text-center mt-3 text-muted" style="font-size:11px;">
+          Terima kasih atas kunjungan Anda!
+        </div>
+      `;
+
+      document.getElementById("receiptContent").innerHTML = receiptHtml;
+      const modal = new bootstrap.Modal(document.getElementById("receiptModal"));
+      modal.show();
+
+      // Reset sesi belanja untuk pelanggan baru berikutnya
+      resetForNewCustomer();
+    });
+
+    // ==================== BACKUP & RESTORE DATA ====================
+    document.getElementById("btnExportData").addEventListener("click", function() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "smart_pos_products_backup.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    document.getElementById("btnImportData").addEventListener("click", () => {
+      document.getElementById("importFileInput").click();
+    });
+
+    document.getElementById("importFileInput").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          if (Array.isArray(imported)) {
+            products = imported;
+            saveProductsToStorage();
+            alert(`Berhasil mengimpor ${products.length} produk!`);
+          } else {
+            alert("Format file JSON tidak valid.");
+          }
+        } catch (err) {
+          alert("Gagal membaca file: " + err);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ==================== FIREBASE CLOUD INTEGRATION ====================
+    function initFirebaseIfConfigured() {
+      const savedConfig = localStorage.getItem(FIREBASE_CONFIG_KEY);
+      if (savedConfig) {
+        try {
+          const config = JSON.parse(savedConfig);
+          if (!firebase.apps.length) {
+            firebase.initializeApp(config);
+          }
+          db = firebase.firestore();
+          const badge = document.getElementById("storageStatusBadge");
+          badge.className = "badge bg-success";
+          badge.innerHTML = '<i class="bi bi-cloud-check-fill me-1"></i>Cloud Firebase (Tersambung)';
+          loadProductsFromFirestore();
+        } catch (e) {
+          console.warn("Koneksi Firebase gagal:", e);
+        }
+      }
+    }
+
+    async function loadProductsFromFirestore() {
+      if (!db) return;
+      try {
+        db.collection("products").onSnapshot((snapshot) => {
+          const cloudProducts = [];
+          snapshot.forEach(doc => {
+            cloudProducts.push({ id: doc.id, ...doc.data() });
+          });
+          if (cloudProducts.length > 0) {
+            products = cloudProducts;
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+            renderProductTable();
+          }
+        });
+      } catch (e) {
+        console.error("Gagal sinkronisasi Firestore:", e);
+      }
+    }
+
+    async function syncAllToFirestore() {
+      if (!db) return;
+      try {
+        const batch = db.batch();
+        products.forEach(p => {
+          const ref = db.collection("products").doc(p.id);
+          batch.set(ref, {
+            name: p.name,
+            price: p.price,
+            barcode: p.barcode || "",
+            photo: p.photo || "",
+            embeddings: p.embeddings || [],
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        });
+        await batch.commit();
+      } catch (e) {
+        console.error("Gagal mengirim data ke Firestore:", e);
+      }
+    }
+
+    document.getElementById("btnConnectFirebase").addEventListener("click", function() {
+      const configStr = document.getElementById("firebaseConfigInput").value.trim();
+      if (!configStr) {
+        alert("Masukkan teks konfigurasi Firebase terlebih dahulu!");
+        return;
+      }
+      try {
+        let configObj;
+        try {
+          configObj = JSON.parse(configStr);
+        } catch {
+          configObj = eval("(" + configStr + ")");
+        }
+        localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(configObj));
+        alert("Konfigurasi tersimpan. Memuat ulang aplikasi...");
+        location.reload();
+      } catch (e) {
+        alert("Format konfigurasi salah: " + e.message);
+      }
+    });
+
+    document.getElementById("btnDisconnectFirebase").addEventListener("click", function() {
+      localStorage.removeItem(FIREBASE_CONFIG_KEY);
+      alert("Mode Cloud diputuskan. Kembali ke Mode Lokal.");
+      location.reload();
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initDefaultData();
+      renderCart();
+      initFirebaseIfConfigured();
+      loadMobileNetModel();
+    });
+  </script>
+</body>
+</html>
